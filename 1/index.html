@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SYDE 572 Assignment 1</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<p><a href="../index.html">&larr; Portfolio home</a></p>
+
+<h1>SYDE 572 &ndash; Assignment 1</h1>
+
+<p>
+Part 1 finds the shortest distance from a point to a curve. Part 2 fits a line and a parabola to four
+points by minimising the mean squared error (MSE). Each part is solved analytically and numerically, by hand and in Python.
+</p>
+
+<p><b>Files:</b></p>
+<ul>
+  <li><a href="hand_solutions/A1_hand_solutions.pdf">Hand solutions (PDF)</a> &ndash; worked solutions for both parts</li>
+  <li><a href="code/distance_methods.py">distance_methods.py</a> &ndash; Part 1 solvers (Newton-Raphson and golden section)</li>
+  <li><a href="code/part1_distance.py">part1_distance.py</a> &ndash; runs Part 1 and makes the Part 1 plots</li>
+  <li><a href="code/fitting_methods.py">fitting_methods.py</a> &ndash; Part 2 solvers (normal equations and Newton-Raphson)</li>
+  <li><a href="code/part2_fitting.py">part2_fitting.py</a> &ndash; runs Part 2 and makes the Part 2 plots</li>
+  <li><a href="code/plot_style.py">plot_style.py</a> &ndash; shared plot colours and style</li>
+  <li><a href="excel/golden_section_search_iteration.xlsx">golden_section_search_iteration.xlsx</a> &ndash; golden-section iterations for all five points</li>
+  <li><a href="excel/mse_iteration.xlsx">mse_iteration.xlsx</a> &ndash; Part 2 Newton-Raphson iterations for the line and parabola</li>
+</ul>
+
+<!-- ============================== PART 1 ============================== -->
+
+<h2>Part 1: Shortest distance from a point to a function</h2>
+
+<h3>1.1 Objective function</h3>
+<p>
+The distance from a point (x<sub>0</sub>, y<sub>0</sub>) to a point (x, f(x)) on the curve is
+d = &radic;((x &minus; x<sub>0</sub>)<sup>2</sup> + (f(x) &minus; y<sub>0</sub>)<sup>2</sup>).
+The square root is increasing, so the x that minimises d also minimises the squared distance, which is easier to work with:
+</p>
+<span class="eq">D(x) = (x &minus; x0)^2 + (f(x) &minus; y0)^2</span>
+<span class="eq">D'(x) = 2(x &minus; x0) + 2(f(x) &minus; y0) f'(x)</span>
+<span class="eq">D''(x) = 2 + 2 f'(x)^2 + 2(f(x) &minus; y0) f''(x)</span>
+
+<h3>1.2 Analytical solution for y = x<sup>2</sup> + 5</h3>
+<p>
+With f(x) = x<sup>2</sup> + 5, f'(x) = 2x and y<sub>0</sub> = 0 for all five points, setting D'(x) = 0 gives
+</p>
+<span class="eq">(x &minus; x0) + (x^2 + 5)(2x) = 0 &nbsp;&rArr;&nbsp; 2x^3 + 11x &minus; x0 = 0</span>
+<p>
+D''(x) = 12x<sup>2</sup> + 22 &gt; 0 for every x, so this cubic has exactly one real root and that root is the
+global minimum. Dividing by 2 gives the depressed cubic x<sup>3</sup> + px + q = 0 with p = 5.5 and q = &minus;x<sub>0</sub>/2,
+whose real root is given by Cardano's formula:
+</p>
+<span class="eq">x* = cbrt(x0/4 + &radic;&Delta;) + cbrt(x0/4 &minus; &radic;&Delta;),   &Delta; = x0^2/16 + (11/6)^3</span>
+<p>
+The distance is then d = &radic;D(x*).
+Geometrically, D'(x) = 0 means the line from the point to the curve is perpendicular to the curve's tangent.
+</p>
+
+<h3>1.3 Numerical methods</h3>
+<p>
+<b>Algorithm A: Newton-Raphson.</b> Newton's method finds the root of D'(x) = 0, starting from x<sup>(0)</sup> = 0:
+</p>
+<span class="eq">x(n+1) = x(n) &minus; D'(x(n)) / D''(x(n)),   stop when |x(n+1) &minus; x(n)| &lt; 1e-7</span>
+<p>
+<b>Algorithm B: Golden-section search.</b> Golden-section search only needs D(x) and an interval [a, b] that contains the minimum.
+From 2x<sup>3</sup> + 11x = x<sub>0</sub>, |x*| &le; |x<sub>0</sub>|/11 &lt; 1 for all five points, so [&minus;2, 2] is a safe interval.
+Each iteration places two probes and keeps the side with the smaller D:
+</p>
+<span class="eq">x1 = a + r(b &minus; a),  x2 = b &minus; r(b &minus; a),  r = 2 &minus; &phi; = 0.382,   stop when |b &minus; a| &lt; 1e-7</span>
+<p>
+Both algorithms are coded as given in the assignment. The only change is a list that records each iteration for the plots.
+</p>
+
+<h3>1.4 Results for the five points</h3>
+<table>
+  <tr><th>Point</th><th>Analytical x*</th><th>Newton x*</th><th>Newton d</th><th>Newton iterations</th><th>Golden x*</th><th>Golden d</th><th>Golden iterations</th></tr>
+  <tr><td>(0, 0)</td><td>0.0000000</td><td>0.0000000</td><td>5.0000000</td><td>1</td><td>0.0000000</td><td>5.0000000</td><td>37</td></tr>
+  <tr><td>(&minus;4, 0)</td><td>&minus;0.3554697</td><td>&minus;0.3554697</td><td>6.2898454</td><td>4</td><td>&minus;0.3554697</td><td>6.2898454</td><td>37</td></tr>
+  <tr><td>(&minus;8, 0)</td><td>&minus;0.6720781</td><td>&minus;0.6720781</td><td>9.1334195</td><td>5</td><td>&minus;0.6720781</td><td>9.1334195</td><td>37</td></tr>
+  <tr><td>(2, 0)</td><td>0.1807446</td><td>0.1807446</td><td>5.3513964</td><td>4</td><td>0.1807446</td><td>5.3513964</td><td>37</td></tr>
+  <tr><td>(6, 0)</td><td>0.5199037</td><td>0.5199037</td><td>7.6031254</td><td>4</td><td>0.5199037</td><td>7.6031254</td><td>37</td></tr>
+</table>
+<p>
+All three methods agree to 7 decimal places. The hand calculations for these points are in the
+<a href="hand_solutions/A1_hand_solutions.pdf">hand solutions</a>.
+</p>
+
+<div class="figure">
+  <img src="figures/part1/p1_five_points.png" alt="Closest points for the five assigned points">
+  <p class="caption">Figure 1. The shortest segment from each point to y = x<sup>2</sup> + 5. The right panel zooms in on the closest points, where the Newton and golden-section answers sit on top of each other.</p>
+</div>
+
+<h3>1.5 Intermediate steps for the point (&minus;4, 0)</h3>
+
+<div class="figure">
+  <img src="figures/part1/p1_newton_geometry.png" alt="Newton-Raphson geometry">
+  <p class="caption">Figure 2. Newton-Raphson starts at x<sup>(0)</sup> = 0. The first step already lands within 0.01 of x* = &minus;0.35547, so iterations 1 to 4 overlap on the curve.</p>
+</div>
+
+<div class="figure">
+  <img src="figures/part1/p1_newton_convergence.png" alt="Newton-Raphson convergence">
+  <p class="caption">Figure 3. |D'(x)| and the step size on a log scale. |D'| falls from 8 to 0.19, 2.9e-4 and 6.4e-10, so the number of correct digits roughly doubles each iteration. This is quadratic convergence.</p>
+</div>
+
+<div class="figure">
+  <img src="figures/part1/p1_golden_brackets.png" alt="Golden-section brackets">
+  <p class="caption">Figure 4. The first six golden-section brackets. The filled triangle is the probe with the smaller D, and the green part is the interval kept for the next iteration. After 37 iterations the bracket has shrunk to the final x*.</p>
+</div>
+
+<div class="figure">
+  <img src="figures/part1/p1_convergence_comparison.png" alt="Newton vs golden-section convergence">
+  <p class="caption">Figure 5. Newton's error against the golden-section bracket width. Golden section shrinks the interval by a constant factor of 0.618 per iteration (linear convergence), so it needs 37 iterations. Newton needs only 4.</p>
+</div>
+
+<p>
+<b>Comparison.</b> Newton-Raphson is much faster, but it needs f'(x), f''(x) and a good starting guess.
+Golden section is slower but only needs D(x) and an interval that contains the minimum, so it is more robust.
+The number of golden-section iterations depends only on the starting interval and the tolerance:
+4 &times; 0.618<sup>n</sup> &lt; 10<sup>&minus;7</sup> gives n = 37 for every point.
+</p>
+
+<h3>1.6 Other functions (non-polynomial)</h3>
+<p>
+The same code works for any curve if f, f' and f'' are passed in. For these curves, D(x) can have more than one critical point,
+so the code first evaluates D on a coarse grid over the domain. Newton starts from the best grid point, and golden section searches
+the grid cell around it.
+</p>
+<table>
+  <tr><th>Curve</th><th>Point</th><th>Newton x*</th><th>Newton d</th><th>Golden x*</th><th>Golden d</th></tr>
+  <tr><td>Exponential y = e<sup>x</sup></td><td>(1, 0)</td><td>0.0000000</td><td>1.4142136</td><td>0.0000000</td><td>1.4142136</td></tr>
+  <tr><td>Logarithmic y = ln x</td><td>(0, 0)</td><td>0.6529186</td><td>0.7797671</td><td>0.6529186</td><td>0.7797671</td></tr>
+  <tr><td>Reciprocal y = 1/x (variable in the denominator)</td><td>(0, 0)</td><td>1.0000000</td><td>1.4142136</td><td>1.0000000</td><td>1.4142136</td></tr>
+  <tr><td>Radical y = &radic;x</td><td>(4, 0)</td><td>3.5000000</td><td>1.9364917</td><td>3.5000000</td><td>1.9364917</td></tr>
+</table>
+
+<div class="figure">
+  <img src="figures/part1/p1_non_polynomial.png" alt="Non-polynomial curves">
+  <p class="caption">Figure 6. Both methods on four non-polynomial curves. In each case the segment from the point meets the curve at a right angle.</p>
+</div>
+
+
+<!-- ============================== PART 2 ============================== -->
+
+<h2>Part 2: Fitting a line and a parabola</h2>
+
+<p>Data: (0, 0.5), (2, 3.5), (1, 1.5), (3, 7.5), so N = 4.</p>
+<span class="eq">MSE = (1/N) &Sigma; (y_fit(x_i) &minus; y_i)^2</span>
+
+<h3>2.1 Line y = c<sub>0</sub> + c<sub>1</sub>x</h3>
+<p><b>MSE function:</b></p>
+<span class="eq">MSE(c0, c1) = (1/4) &Sigma; (c0 + c1 x_i &minus; y_i)^2 = c0^2 + 3 c0 c1 + 3.5 c1^2 &minus; 6.5 c0 &minus; 15.5 c1 + 17.75</span>
+
+<p><b>Analytical solution.</b> Setting both partial derivatives to zero gives the normal equations A<sup>T</sup>A c = A<sup>T</sup>y, where each row of A is [1, x<sub>i</sub>]:</p>
+<span class="eq">[ 4   6 ] [c0]   [13]
+[ 6  14 ] [c1] = [31]      &rArr;  c0 = &minus;0.2,  c1 = 2.3</span>
+
+<p>
+<b>Numerical solution: Newton-Raphson, one parameter at a time.</b> Starting from c<sub>0</sub> = c<sub>1</sub> = 0,
+each iteration first updates the slope with the intercept held fixed, then updates the intercept using the new slope.
+Because the MSE is quadratic in each parameter, each single-parameter Newton step
+&theta;<sub>j</sub> &larr; &theta;<sub>j</sub> &minus; g<sub>j</sub>/H<sub>jj</sub> lands exactly on the best value of that parameter:
+</p>
+<span class="eq">c1 &larr; (15.5 &minus; 3 c0) / 7
+c0 &larr; (6.5 &minus; 3 c1) / 2</span>
+<p>This repeats until no parameter changes by more than 1e-7. The line converges in 32 iterations.</p>
+
+<div class="figure">
+  <img src="figures/part2/p2_line_iterations.png" alt="Line after each iteration">
+  <p class="caption">Figure 7. The line after each Newton-Raphson iteration. Light blue is early and dark blue is later. Orange is the converged line.</p>
+</div>
+
+<div class="figure">
+  <img src="figures/part2/p2_line_contour.png" alt="MSE contours for the line">
+  <p class="caption">Figure 8. The path on the MSE(c<sub>0</sub>, c<sub>1</sub>) contours. Updating one parameter at a time gives a staircase of horizontal and vertical moves. One full multivariate Newton step (both parameters at once) goes straight to the minimum, because the MSE is quadratic.</p>
+</div>
+
+<h3>2.2 Parabola y = Bx<sup>2</sup> + Cx + D</h3>
+<p><b>MSE function:</b></p>
+<span class="eq">MSE(B, C, D) = (1/4) &Sigma; (B x_i^2 + C x_i + D &minus; y_i)^2</span>
+
+<p><b>Analytical solution.</b> Each row of A is [x<sub>i</sub><sup>2</sup>, x<sub>i</sub>, 1]:</p>
+<span class="eq">[ 98  36  14 ] [B]   [83]
+[ 36  14   6 ] [C] = [31]      &rArr;  B = 0.75,  C = 0.05,  D = 0.55
+[ 14   6   4 ] [D]   [13]</span>
+
+<p><b>Numerical solution: Newton-Raphson, one parameter at a time</b>, in the order B, C, D:</p>
+<span class="eq">B &larr; (41.5 &minus; 18 C &minus; 7 D) / 49
+C &larr; (15.5 &minus; 18 B &minus; 3 D) / 7
+D &larr; (6.5 &minus; 7 B &minus; 3 C) / 2</span>
+<p>Starting from B = C = D = 0, the parabola converges in 276 iterations.</p>
+
+<div class="figure">
+  <img src="figures/part2/p2_parabola_iterations.png" alt="Parabola after each iteration">
+  <p class="caption">Figure 9. The parabola after each Newton-Raphson iteration. The curve is close to the final fit after about 5 iterations.</p>
+</div>
+
+<div class="figure">
+  <img src="figures/part2/p2_convergence.png" alt="Convergence of the line and parabola">
+  <p class="caption">Figure 10. MSE &minus; MSE* after each iteration. Both fits converge linearly, but the parabola converges much more slowly.</p>
+</div>
+
+<p>
+<b>Why the parabola needs more iterations.</b> For x = 0 to 3, the x<sup>2</sup> and x columns of A are strongly correlated
+(the off-diagonal terms 36 and 14 are large compared with the diagonal). A change in B is mostly undone by the next change in C,
+so each one-parameter step only makes a small net improvement. The line has only one such coupling term, so it converges faster.
+A full multivariate Newton step updates all parameters together and reaches the exact answer in one step for both models.
+</p>
+
+<h3>2.3 Answers</h3>
+<table>
+  <tr><th>Model</th><th>Fitted function</th><th>MSE</th><th>Newton-Raphson iterations</th></tr>
+  <tr><td>Line</td><td>y = &minus;0.2 + 2.3x</td><td><b>0.575</b></td><td>32</td></tr>
+  <tr><td>Parabola</td><td>y = 0.75x<sup>2</sup> + 0.05x + 0.55</td><td><b>0.0125</b></td><td>276</td></tr>
+</table>
+
+<div class="figure">
+  <img src="figures/part2/p2_final_fits.png" alt="Best-fit line and parabola">
+  <p class="caption">Figure 11. The best-fit line and parabola. The dotted lines are the residuals.</p>
+</div>
+
+<p>
+The parabola's MSE is about 46 times smaller than the line's. For the line, the data points at x = 0, 1, 2, 3 fall above, below, below and then above the line.
+That pattern shows the data is curved, so the parabola is the better model. With 4 points and 3 parameters, the parabola has only one
+degree of freedom left, so some of its improvement comes simply from having one more parameter.
+</p>
+
+</body>
+</html>

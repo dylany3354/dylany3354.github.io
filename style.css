@@ -1,0 +1,21 @@
+body {
+  font-family: Arial, sans-serif;
+  max-width: 850px;
+  margin: 20px auto;
+  padding: 0 15px;
+  line-height: 1.5;
+  color: #222;
+}
+h1 { border-bottom: 2px solid #333; padding-bottom: 5px; }
+h2 { margin-top: 40px; border-bottom: 1px solid #aaa; }
+h3 { margin-top: 25px; }
+a { color: #2a78d6; }
+img { max-width: 100%; border: 1px solid #ddd; }
+.figure { margin: 20px 0; }
+.caption { font-size: 14px; color: #555; }
+table { border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+th, td { border: 1px solid #999; padding: 4px 8px; text-align: right; }
+th { background: #eee; }
+td:first-child, th:first-child { text-align: left; }
+.eq { font-family: "Courier New", monospace; background: #f4f4f4; padding: 8px; display: block; margin: 8px 0; overflow-x: auto; white-space: pre; }
+code { background: #f4f4f4; padding: 1px 4px; }
