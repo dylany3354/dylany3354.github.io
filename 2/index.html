@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SYDE 572 Assignment 2</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<p><a href="../index.html">&larr; Portfolio home</a></p>
+
+<h1>SYDE 572 &ndash; Assignment 2</h1>
+
+<p>
+Both parts predict MEDV, the median home value of a town in $1000s, from the 13 features of the Boston Housing data using
+linear basis function regression. Part 1 uses polynomial basis functions and Part 2 uses Gaussian basis functions.
+Each part fits the model without regularization and then with L2 regularization, choosing &lambda; by 10-fold cross-validation, in Python.
+</p>
+
+<p><b>Files:</b></p>
+<ul>
+  <li><a href="code/data_utils.py">data_utils.py</a> &ndash; loads the data, makes the train/test split and normalizes the features</li>
+  <li><a href="code/regression_core.py">regression_core.py</a> &ndash; polynomial and Gaussian basis functions, least-squares and ridge solver, RMS error, 10-fold cross-validation</li>
+  <li><a href="code/part1_polynomial.py">part1_polynomial.py</a> &ndash; Part 1: <code>polynomial_regression</code> (a), <code>degree_one_weights</code> (b), <code>polynomial_regression_1d_vis</code> (c), <code>polynomial_regression_reg</code> (d)</li>
+  <li><a href="code/part2_gaussian.py">part2_gaussian.py</a> &ndash; Part 2: <code>gaussian_regression</code> (e), <code>gaussian_regression_reg</code> (f)</li>
+  <li><a href="code/plot_style.py">plot_style.py</a> &ndash; shared plot colours and style</li>
+</ul>
+
+<h2>Part 1: Polynomial basis functions</h2>
+
+<h3>1.1 Data and normalization</h3>
+<p>
+The data has 506 towns and 13 features: CRIM, ZN, INDUS, CHAS, NOX, RM, AGE, DIS, RAD, TAX, PTRATIO, B and LSTAT.
+As instructed, the first 100 towns are the training set and the remaining 406 are the test set.
+Each feature is converted to z = (x &minus; mean)/SD using the mean and SD (standard deviation) of the 100 training towns only to avoid data leakage, and the same values are applied
+to the test towns. Inside cross-validation, the mean and SD are recomputed from each fold's training part.
+CHAS is 0 for all 100 training towns, so its SD of 0 is replaced by 1; it is then constant in training and gets a weight of 0.
+MEDV is not normalized, so all errors are in $1000s.
+</p>
+
+<h3>1.2 Model and fitting</h3>
+<p>
+For regression, the prediction is a linear combination of K basis functions, with &phi;<sub>0</sub>(x) = 1 as the bias:
+</p>
+<span class="eq">y_hat = f(x) = &Sigma;_k w_k &phi;_k(x) = &phi;(x)^T w
+y_hat = &Phi;^T w,   &Phi; = [&phi;(x_1), ..., &phi;(x_N)]</span>
+<p>
+The polynomial basis uses only monomials of a single feature, with no cross-terms, so a degree M model has 1 + 13M weights:
+</p>
+<span class="eq">&phi;(x) = [1, x_1..x_13, x_1^2..x_13^2, ..., x_1^M..x_13^M]</span>
+<p>
+Without regularization the weights minimize the squared error and are found with the pseudo-inverse. With L2 regularization the ridge solution
+from the slides is used, so every weight, including the bias w<sub>0</sub>, is penalized:
+</p>
+<span class="eq">&lambda; = 0:   w* = (&Phi;&Phi;^T)^-1 &Phi;y = (&Phi;^T)^- y
+&lambda; &gt; 0:   J(w) = 1/2 ||y &minus; &Phi;^T w||^2 + &lambda;/2 ||w||^2   &rArr;   w* = (&Phi;&Phi;^T + &lambda;I)^-1 &Phi;y</span>
+
+<h3>1.3 Error and cross-validation</h3>
+<p>
+All errors are RMS errors:
+</p>
+<span class="eq">E_RMS = &radic;( (1/N) &Sigma; (y_hat_i &minus; y_i)^2 )</span>
+<p>
+For 10-fold cross-validation, the 100 training towns are shuffled once (seed 0) and split into 10 folds of 10. Each fold is used once as the
+validation set while the model is trained on the other 90, and the cross-validation error is the average of the 10 validation RMS errors.
+The same folds are used for every &lambda;.
+</p>
+
+<h3>1.4 (a) Training and test error against polynomial degree</h3>
+<div class="figure">
+  <img src="figures/part1/p1a_rms_vs_degree.png" alt="RMS error against polynomial degree">
+  <p class="caption">Figure 1. Training and test RMS error for polynomial degree 1 to 7, all 13 features, no regularization (log scale).</p>
+</div>
+<table>
+  <tr><th>Degree M</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+  <tr><td>Number of weights</td><td>14</td><td>27</td><td>40</td><td>53</td><td>66</td><td>79</td><td>92</td></tr>
+  <tr><td>Training RMS</td><td>2.04</td><td>1.58</td><td>1.45</td><td>1.27</td><td>1.10</td><td>1.07</td><td>0.88</td></tr>
+  <tr><td>Test RMS</td><td>36.4</td><td>1.10e3</td><td>4.87e4</td><td>2.19e7</td><td>1.84e10</td><td>5.02e12</td><td>6.88e15</td></tr>
+</table>
+<p>
+The training error falls every time the degree increases (2.04 to 0.88), because each higher-degree model contains the lower-degree
+one and has more weights to fit the 100 training towns. The test error does the opposite, it is already 36.4 at M = 1 and grows to
+6.9&times;10<sup>15</sup> at M = 7. This is overfitting, made much worse by extrapolation. The first 100 towns are not representative of the rest.
+For example, CRIM is at most 1.61 in the training towns but reaches 89.0 in the test towns, which is 229 standard deviations above the training mean.
+A polynomial raises that value to the M-th power, so the predictions for those towns become enormous.
+At higher degrees the design matrix is also rank-deficient (rank 66 of 92 columns at M = 7), because CHAS is constant and RAD and ZN take only
+6 and 12 distinct values in the training towns; the pseudo-inverse handles this.
+</p>
+
+<h3>1.5 (b) Weights of the degree 1 model</h3>
+<p>
+W is the learned weight on the normalized feature. It represents the change in predicted MEDV ($1000s) for a one-standard-deviation increase in that feature,
+with the other features held fixed. Undoing the normalization, &ycirc; = w<sub>0</sub> + &Sigma; w<sub>j</sub>(x<sub>j</sub> &minus; mean<sub>j</sub>)/SD<sub>j</sub>,
+so the weight per raw unit is w<sub>j</sub>/SD<sub>j</sub> and the raw intercept is w<sub>0</sub> &minus; &Sigma; w<sub>j</sub> mean<sub>j</sub>/SD<sub>j</sub>.
+</p>
+<table>
+  <tr><th>Feature</th><th>Training mean</th><th>Training SD</th><th>w (normalized)</th><th>w/SD (per raw unit)</th></tr>
+  <tr><td>w<sub>0</sub> (bias)</td><td>&ndash;</td><td>&ndash;</td><td>22.309</td><td>&minus;37.904 (intercept)</td></tr>
+  <tr><td>1. CRIM</td><td>0.283</td><td>0.387</td><td>&minus;1.338</td><td>&minus;3.456</td></tr>
+  <tr><td>2. ZN</td><td>12.385</td><td>22.852</td><td>0.123</td><td>0.00538</td></tr>
+  <tr><td>3. INDUS</td><td>6.669</td><td>3.147</td><td>&minus;0.531</td><td>&minus;0.169</td></tr>
+  <tr><td>4. CHAS</td><td>0</td><td>0 (set to 1)</td><td>0</td><td>0</td></tr>
+  <tr><td>5. NOX</td><td>0.471</td><td>0.047</td><td>1.003</td><td>21.515</td></tr>
+  <tr><td><b>6. RM</b></td><td>6.234</td><td>0.488</td><td><b>4.196</b></td><td><b>8.591</b></td></tr>
+  <tr><td>7. AGE</td><td>56.252</td><td>27.339</td><td>&minus;2.166</td><td>&minus;0.0792</td></tr>
+  <tr><td><b>8. DIS</b></td><td>5.177</td><td>1.405</td><td><b>0.0107</b></td><td><b>0.00763</b></td></tr>
+  <tr><td>9. RAD</td><td>3.960</td><td>1.385</td><td>&minus;0.194</td><td>&minus;0.140</td></tr>
+  <tr><td>10. TAX</td><td>289.49</td><td>45.692</td><td>&minus;0.349</td><td>&minus;0.00763</td></tr>
+  <tr><td>11. PTRATIO</td><td>18.690</td><td>1.690</td><td>0.261</td><td>0.155</td></tr>
+  <tr><td>12. B</td><td>385.30</td><td>27.250</td><td>0.181</td><td>0.00664</td></tr>
+  <tr><td>13. LSTAT</td><td>10.773</td><td>5.671</td><td>0.149</td><td>0.0262</td></tr>
+</table>
+<p>
+<b>RM (average rooms per dwelling): w = 4.196, or 8.59 per room.</b> With everything else fixed, one more room per dwelling raises the predicted
+median value by about $8,600. This is the largest weight in the model and it is reasonable since larger homes are worth more, and RM has the
+strongest correlation with MEDV in the training towns (r = 0.85).
+</p>
+<p>
+<b>DIS (weighted distance to five Boston employment centers): w = 0.0107, or 0.0076 per unit of distance.</b> This is essentially zero,
+so the model says distance to jobs has no effect on value once the other features are known. That is not very believable. If all other features are held fixed, towns farther from employment centers should be worth less. The 100 training towns are nearby suburbs with a narrow range of DIS, and DIS moves
+together with low crime, low NOX and newer housing, which the model has already given credit to. Fitting the same model to all 506 towns gives a
+clearly negative DIS weight (&minus;3.10 normalized), which is what one would expect.
+</p>
+
+<h3>1.6 (c) Polynomial regression on one feature, ZN</h3>
+<p>
+The single feature used is the 2nd one, ZN
+(proportion of residential land zoned for lots over 25,000 sq.ft.). Only ZN is used, normalized with the training mean 12.385 and SD 22.852. Degrees 1 to 10 were fitted with no regularization;
+each plot shows the training towns, the test towns and the learned polynomial (axis in raw units). ZN is 0 for 63 of the 100 training towns and takes
+only 12 distinct values, but the training towns cover the full range 0 to 100, so no test town lies outside it.
+</p>
+<div class="figure">
+  <img src="figures/part1/p1c_degree_1.png" alt="Degree 1 polynomial in ZN">
+  <p class="caption">Figure 2. M = 1 (low order). An almost flat line, rising from about 21 to 28 across the range of ZN. ZN on its own explains little
+  of the variation in MEDV, so the training error (5.70) is high, but the line generalizes as well as any of the fits (test RMS 9.35).</p>
+</div>
+<div class="figure">
+  <img src="figures/part1/p1c_degree_4.png" alt="Degree 4 polynomial in ZN">
+  <p class="caption">Figure 3. M = 4 (moderate order). The curve is still smooth and close to the line; the extra terms barely lower the training error
+  (5.65) and the test error is essentially unchanged (9.39). Degrees 1 to 6 all behave like this.</p>
+</div>
+<div class="figure">
+  <img src="figures/part1/p1c_degree_10.png" alt="Degree 10 polynomial in ZN">
+  <p class="caption">Figure 4. M = 10 (high order). The polynomial can only bend freely in the gaps between the few distinct ZN values (for example
+  between 30 and 75, where there are no training towns), and it swings far outside the range of the data there. The training error is the lowest
+  (5.44) but the test error jumps to 65.4. This is overfitting.</p>
+</div>
+<table>
+  <tr><th>Degree M</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr>
+  <tr><td>Training RMS</td><td>5.70</td><td>5.67</td><td>5.66</td><td>5.65</td><td>5.65</td><td>5.65</td><td>5.50</td><td>5.48</td><td>5.47</td><td>5.44</td></tr>
+  <tr><td>Test RMS</td><td>9.35</td><td>9.45</td><td>9.43</td><td>9.39</td><td>9.38</td><td>9.36</td><td>10.42</td><td>18.64</td><td>15.34</td><td>65.39</td></tr>
+</table>
+<p>
+Training error falls slowly as the degree increases, while test error stays flat up to M = 6 and then rises sharply.
+With only 12 distinct training values, a high-order polynomial is free to do anything between them.
+</p>
+
+<h3>1.7 (d) L2-regularized degree 8 polynomial in ZN</h3>
+<div class="figure">
+  <img src="figures/part1/p1d_cv_vs_lambda.png" alt="Cross-validation error against lambda, polynomial">
+  <p class="caption">Figure 5. Average 10-fold validation RMS error against &lambda; (log scale) for a degree 8 polynomial in ZN, first 100 towns.
+  The unregularized result (&lambda; = 0) is far off the scale of the plot and is reported separately.</p>
+</div>
+<table>
+  <tr><th>&lambda;</th><th>0</th><th>0.01</th><th>0.1</th><th>1</th><th>10</th><th>100</th><th>1000</th></tr>
+  <tr><td>Average validation RMS</td><td>178.35</td><td>10.04</td><td>10.23</td><td>7.99</td><td><b>7.36</b></td><td>15.42</td><td>22.41</td></tr>
+</table>
+<p>
+<b>Chosen &lambda; = 10</b>, which has the lowest average validation error (7.36).
+The unregularized value of 178 comes from a single fold. Its training part does not contain the ZN values 17.5, 80 and 100, so the unregularized
+degree 8 curve swings wildly at those values and that fold's error is 1733 (the other nine folds are between 3 and 11).
+Regularization stops the curve from swinging between the few distinct ZN values, which is why even a small &lambda; helps a lot.
+For large &lambda;, every weight, including the bias, is shrunk toward 0, so the predictions are pulled toward $0 and the error rises again
+(22.4 at &lambda; = 1000).
+</p>
+
+<h2>Part 2: Gaussian basis functions</h2>
+
+<h3>2.1 Gaussian basis</h3>
+<p>
+The data, normalization, solver and cross-validation are the same as in Part 1. The basis functions are Gaussians centered on randomly chosen
+training towns c<sub>k</sub>, plus the bias:
+</p>
+<span class="eq">&phi;_k(x) = exp(a ||x &minus; c_k||^2),   a = &minus;1/(2s^2)</span>
+<p>
+The width s = 2 is assumed (in normalized units). It is set by <code>S</code> at the top of
+<code>part2_gaussian.py</code>.
+</p>
+
+<h3>2.2 (e) Training and test error against the number of basis functions</h3>
+<p>
+A random permutation of the 100 training towns is drawn (seed 0) and its first K towns are used as the centers, for K = 5, 15, ..., 95.
+All 13 normalized features are used with s = 2 and a bias, so each model has K + 1 weights. No regularization.
+</p>
+<div class="figure">
+  <img src="figures/part2/p2e_rms_vs_K.png" alt="RMS error against number of Gaussian basis functions">
+  <p class="caption">Figure 6. Training and test RMS error against the number of Gaussian basis functions K. The dashed line is the test error of always
+  predicting the mean of the training towns.</p>
+</div>
+<table>
+  <tr><th>K</th><th>5</th><th>15</th><th>25</th><th>35</th><th>45</th><th>55</th><th>65</th><th>75</th><th>85</th><th>95</th></tr>
+  <tr><td>Training RMS</td><td>4.62</td><td>3.69</td><td>2.77</td><td>2.08</td><td>1.61</td><td>1.41</td><td>1.26</td><td>1.08</td><td>1.00</td><td>0.21</td></tr>
+  <tr><td>Test RMS</td><td>9.80</td><td>9.50</td><td>9.49</td><td>9.24</td><td>9.20</td><td>9.24</td><td>9.35</td><td>9.21</td><td>9.01</td><td>8.98</td></tr>
+</table>
+<p>
+The training error falls steadily from 4.62 to 0.21. At K = 95 there are 96 weights for 100 towns, so the model almost passes
+through every training point. The test error stays almost flat between 9.0 and 9.8, only slightly better than always predicting the training mean (9.83).
+Unlike the polynomials in (a), the test error does not explode. Each Gaussian lies between 0 and 1 and fades to 0 far from its center, so a test town
+far from every training town gets a prediction close to the bias w<sub>0</sub>. This happens often here because with K = 95, 42% of the test towns have
+&phi;<sub>k</sub> &lt; 0.01 for every center, and the median distance from a test town to its nearest training town is 4.8 (normalized units),
+compared with 0.99 between training towns. The test error is limited by how little of the feature space the first 100 towns cover, not by K,
+and the growing gap between training and test error shows overfitting.
+</p>
+
+<h3>2.3 (f) L2-regularized Gaussian regression, K = 90</h3>
+<p>
+All 13 features of the first 100 towns are used, with 90 Gaussian basis functions and s = 2. In each fold, the features are normalized with that
+fold's training part and the 90 centers are drawn at random from it.
+</p>
+<div class="figure">
+  <img src="figures/part2/p2f_cv_vs_lambda.png" alt="Cross-validation error against lambda, Gaussian">
+  <p class="caption">Figure 7. Average 10-fold validation RMS error against &lambda; (log scale). The dashed line is the unregularized result (&lambda; = 0).</p>
+</div>
+<table>
+  <tr><th>&lambda;</th><th>0</th><th>0.01</th><th>0.1</th><th>1</th><th>10</th><th>100</th><th>1000</th></tr>
+  <tr><td>Average validation RMS</td><td>5.34</td><td>2.87</td><td><b>2.85</b></td><td>3.21</td><td>5.06</td><td>9.70</td><td>18.18</td></tr>
+</table>
+<p>
+<b>Chosen &lambda; = 0.1</b>, which has the lowest average validation error (2.85).
+Without regularization each fold has 91 weights (90 Gaussians and the bias) and only 90 training towns, so the fit passes through every training
+point and the validation error is high (5.34). A small penalty roughly halves it. For large &lambda; every weight, including the bias, is shrunk
+toward 0, so the predictions are pulled toward $0 and the error rises to 18.2 at &lambda; = 1000.
+</p>
+
+<h2>Summary</h2>
+<ul>
+  <li><b>(a) Polynomial, degree 1 to 7:</b> training RMS falls from 2.04 to 0.88; test RMS rises from 36.4 to 6.88e15 (overfitting and extrapolation).</li>
+  <li><b>(b) Degree 1 weights:</b> The 6th feature, RM, is 4.196 (8.59 per room), which is reasonable. The 8th feature, DIS, is 0.0107 (0.0076 per unit), essentially zero, which is not believable.</li>
+  <li><b>(c) ZN only:</b> degrees 1 to 6 are almost the same (test RMS about 9.4); degree 10 overfits (test RMS 65.4).</li>
+  <li><b>(d) Degree 8 in ZN, 10-fold CV:</b> chosen &lambda; = 10 (validation RMS 7.36, compared with 178.35 at &lambda; = 0).</li>
+  <li><b>(e) Gaussian, K = 5 to 95:</b> training RMS falls from 4.62 to 0.21; test RMS stays between 8.98 and 9.80.</li>
+  <li><b>(f) Gaussian, K = 90, 10-fold CV:</b> chosen &lambda; = 0.1 (validation RMS 2.85, compared with 5.34 at &lambda; = 0).</li>
+</ul>
+
+<p>
+In both parts, more flexibility always lowers the training error but not the test error. Polynomials are unbounded, so their test error explodes
+for test towns outside the range of the first 100 towns, while Gaussian basis functions fall back to the bias there.
+In both cross-validations a moderate &lambda; did better than both no regularization and heavy regularization.
+</p>
+
+</body>
+</html>
