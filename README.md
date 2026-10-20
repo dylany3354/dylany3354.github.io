@@ -3,6 +3,7 @@
 SYDE 572 portfolio, hosted at https://dylany3354.github.io.
 
 - [Assignment 1](1/index.html)
+- [Assignment 2](2/index.html)
 
 ## Folder structure
 
@@ -20,6 +21,7 @@ dylany3354.github.io/
 │   └── hand_solutions/   hand-worked solutions (PDF)
 └── 2/                    Assignment 2
     ├── index.html        assignment page
+    ├── assn2 material    data used for Assignment 2
     ├── code/             Python code
     └── figures/
         ├── part1/        polynomial basis plots
